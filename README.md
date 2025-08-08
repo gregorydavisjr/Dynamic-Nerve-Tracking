@@ -1,65 +1,82 @@
-> READ ME
-# HOW TO USE TENSORFLOW PREDICTIONS
-3 step process for using the US images to train a U-net model and make predictions
-1. Process the masks to make ensure they are compatible
-2. Train the U-net model using tensorflow in python
-3. Run a prediction script using the .keras model in python
-## Processing Masks
-> mask_fix.py 
->
-Before using the masks they must be "fixed" using the mask_fix.py script
-- the blank masks must be inverted to work properly *(black instead of white; UN is nowhere instead of everywhere)*
-- the masks must be converted to a high quality .png as well
->
-Once opened the directory for the masks must be configured before processing them
-- MASK_FOLDER = set the path that the masks are stored in 
->
-run 'mask_fix.py' to fix the empty masks
--  in the terminal enter python mask_fix.py
->
-*ensure you are in the proper directory*
+# Niryo Pose Logger
 
+This application logs the pose and joint data of a Niryo Ned2 robot over time while it's in learning mode, and saves the data to an Excel file. It also generates a 3D plot of the recorded trajectory.
 
-## Running the training program
-> ulnar_nerve_training.py
-> 
-  ensure you are in the proper directory using "cd"
->
-  then in the terminal enter:
-> 
-python ulnar_nerve_training.py --data_root "C:\Users\ddavi\OneDrive\Desktop\School\MEMS FIRE\Robot Code\Unet\ulnar_nerve_segmentation" --epochs 20 --batch 16 --img_size 128
+## 🧠 Key Features
 
-- epoch = how many times it cycles through the images
-- batch = how many images at a time
-- img size = must match size of images and masks
+- Logs robot TCP pose and joint angles at 20Hz
+- Saves to Excel `.xlsx` file with timestamps
+- Displays a 3D plot of the robot’s TCP trajectory
+- GUI interface using `tkinter` for easy control
+- Designed for Niryo Ned2 in learning mode
 
-*if not already in the proper directory you may need to enter the full path to the code, replacing "ulnar_nerve_training.py"*
+## 🛠️ Requirements
 
-python "C:\Users\ddavi\OneDrive\Desktop\School\MEMS FIRE\Robot Code\Unet\ulnar_nerve_training.py"
+Install the following Python packages:
+*Using windows powershell or equivalent*
 
-## Using the model to predict
-> ulnar_nerve_predict.py
->
-once the program is open, configure the save directory to the right path
-- MODEL_PATH = set the path that the model was saved to
-- IMAGES_FOLDER = set the path that the US images are in
-- GT_MASK_FOLDER = set the path that the masks are in
-- OUTPUT_PRED_DIR = set a path for the prediction images to save to
-- IMG_SIZE = must match the size set during training
-- THRESH = sigmoid threshold
->
+```bash
+pip install pandas matplotlib pyniryo2
+```
 
-### Going through predictions
->
-Once the model has made its predictions the program will open a GUI
-- On your keyboard press p to go to the previous figure and n to go to the next
-- Press q to quit the program
->
-Congrats!
+Ensure the Niryo Ned2 robot is connected and reachable via the configured IP.
+(whether using ethernet or hotspot)
 
+## ⚙️ Configuration
 
+In the script:
 
+```python
+ROBOT_IP = "x.x.x.x" #For ethernet: "169.254.200.200", for hotspot: "10.10.10.10"
+SAVE_DIR = "C:\\Users\\ddavi\\OneDrive\\Desktop\\School\\MEMS FIRE\\Robot Code\\Data" #Change to the proper save directory for the .xlsx file
+```
 
+- Replace `ROBOT_IP` with your robot’s IP address. #ethernet or hotspot
+- Update `SAVE_DIR` to your desired output directory.
 
+## 🚀 How to Use
+1. Connect to the robot:  
+   Ensure the robot is on
+   ETHERNET
+   - plug in ethernet cord
+   - ensure 'ROBOT_IP' is set to "169.254.200.200"
+   HOTSPOT
+   - connect to the robot's hotspot "Niryo Hotspot 23-e36-4c9" 
+      - Password: niryorobot
+   - ensure 'ROBOT_IP' is set to "10.10.10.10"
 
+2. Run the script:  
+   *ensure the correct directory is set using /cd followed by the directory* 
+   ```bash
+   python "Pose Logger.py" #Script can also be run by clicking the run button at the top right of vscode
+   ```
 
+3. Use the GUI:
+   - Press **Start Recording** and move the robot by hand.
+   - Press **Stop Recording** to save the data and generate a 3D plot.
+
+4. Data will be saved in the specified `SAVE_DIR` as an Excel file.
+
+## 📊 Output
+
+- Excel file with:
+  - Real Time
+  - Timestamp
+  - TCP Pose (X, Y, Z, Roll, Pitch, Yaw)
+  - Joint Angles
+
+- 3D matplotlib plot showing the TCP path.
+
+## 🔒 Cleanup
+
+The robot automatically exits learning mode and disconnects when you close the GUI.
+
+## 🧑‍💻 Author
+
+Script created by Gregory Davis for research in the MEMS FIRE program at the University of Pittsburgh.
+
+---
+
+### ⚠️ Disclaimer
+
+This script requires a Niryo Ned2 robot. Always ensure the robot is in learning mode before moving it by hand.
