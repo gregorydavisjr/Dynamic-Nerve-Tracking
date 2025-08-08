@@ -1,0 +1,111 @@
+//////////////////////////////////////// Initial Setup
+
+path = getInfo("image.directory") + getTitle();
+dir = getDirectory("image");
+maskDir = dir + "Masks" + File.separator;
+File.makeDirectory(maskDir);  // Create folder to save masks
+
+a = getTitle();
+
+
+//////////////////////////////////////// Convert to HSB & Threshold
+
+min = newArray(3);
+max = newArray(3);
+filter = newArray(3);
+
+run("HSB Stack");
+run("Convert Stack to Images");
+selectWindow("Hue"); rename("0");
+selectWindow("Saturation"); rename("1");
+selectWindow("Brightness"); rename("2");
+
+min[0] = 31; max[0] = 51; filter[0] = "pass";
+min[1] = 20; max[1] = 255; filter[1] = "pass";
+min[2] = 74; max[2] = 255; filter[2] = "pass";
+
+for (i=0; i<3; i++) {
+    selectWindow(""+i);
+    setThreshold(min[i], max[i]);
+    run("Convert to Mask");
+    if (filter[i]=="stop") run("Invert");
+}
+
+imageCalculator("AND create", "0", "1");
+imageCalculator("AND create", "Result of 0", "2");
+
+for (i=0; i<3; i++) {
+    selectWindow(""+i);
+    close();
+}
+selectWindow("Result of 0");
+close();
+selectWindow("Result of Result of 0");
+rename(a);
+run("Invert");
+
+
+//////////////////////////////////////// Find 10mm distance in pixels
+
+width = getWidth();
+height = getHeight();
+
+low = 8;
+high = 28;
+xnormal = 532;
+ynormal = 434;
+
+scaleFactor = (xnormal * ynormal) / (width * height);
+rangelow = (low / scaleFactor) + (low / scaleFactor) * 0.1;
+rangehigh = (high / scaleFactor) - (high / scaleFactor) * 0.25;
+
+run("Make Binary");
+run("Options...", "black");
+run("Set Measurements...", "centroid");
+run("Analyze Particles...", "size=" + rangelow + "-" + rangehigh + " show=Outlines display clear include");
+
+n = nResults;
+y = getResult("Y", 1);
+print("Y = " + y);
+print("Middle = " + (width/2) * (10/y));
+run("Clear Results");
+
+
+//////////////////////////////////////// Loop to trace ROI and save masks
+
+close();
+open(path);  // Reopen the original image
+
+waitForUser("Click OK to begin collecting data. Cancel to stop.");
+
+i = 1;
+
+while (i < 182) {
+
+    run("Set Scale...", "distance=" + y + " known=10 unit=mm");
+    run("Select All");
+
+    // Prompt user to draw ROI
+    waitForUser("Draw a shape (e.g., oval, rectangle, polygon), then click OK");
+
+    // Measure shape
+    run("Set Measurements...", "area centroid perimeter fit display redirect=None decimal=3");
+    run("Measure");
+
+    // ==== Save binary mask from selection ====
+    run("Create Mask");
+    saveAs("Tiff", maskDir + "mask_" + i + ".tif");
+    close(); // closes mask window
+    // ========================================
+
+    run("Select All");
+
+    // Move to next image
+    close();
+    ii = i + 1;
+    newPath = replace(path, i + ".png", ii + ".png");
+    open(newPath);
+    path = newPath;
+
+    i = i + 1;
+}

@@ -1,0 +1,166 @@
+//////////////////////////////////////// What this code does
+// This code take the 1st image of an ultrasound set and calibrates it so we get 
+// realworld distances when measuring
+// Next is loops through all of the images in a folder allow you to measure the 
+// x, y, area, perimerter, and fitted ellipse
+// y is defined as depth from the probe face and x is the distance from the left 
+// side of the image. 
+
+// For each large cut of back slashes you should be able to 
+// copy and paste the code in sections to see how each section works 
+
+
+///////////////////////////////////////////// Start up, with grabbing the image file name
+
+path = getInfo("image.directory") + getTitle();
+
+////////////////////////////////////////////// Image Processing
+
+/// I personally do not know how this code works
+/// What is does it takes the image, applies a filter for Hue, Saturation, and Brightiness
+/// Using the values of min and max below then adds that mask to the image
+/// This mask is then used to auto calibrate the size of the image
+
+/// To manually apply a mask you can go to Image -> Adjust -> Color Threshold
+/// Here you can play around with the mask and find what works best
+
+min=newArray(3);
+max=newArray(3);
+filter=newArray(3);
+a=getTitle();
+run("HSB Stack");
+run("Convert Stack to Images");
+selectWindow("Hue");
+rename("0");
+selectWindow("Saturation");
+rename("1");
+selectWindow("Brightness");
+rename("2");
+min[0]=31;
+max[0]=51;
+filter[0]="pass";
+min[1]=20;
+max[1]=255;
+filter[1]="pass";
+min[2]=74;
+max[2]=255;
+filter[2]="pass";
+for (i=0;i<3;i++){
+  selectWindow(""+i);
+  setThreshold(min[i], max[i]);
+  run("Convert to Mask");
+  if (filter[i]=="stop")  run("Invert");
+}
+imageCalculator("AND create", "0","1");
+imageCalculator("AND create", "Result of 0","2");
+for (i=0;i<3;i++){
+  selectWindow(""+i);
+  close();
+}
+selectWindow("Result of 0");
+close();
+selectWindow("Result of Result of 0");
+rename(a);
+// Colour Thresholding-------------
+
+run("Invert");
+
+
+////////////////////////////////////////////////// Find 10mm distance in Pixels
+
+//// This set of code finds the second dash of the ultrasound image . . .
+/// that marks the 10 mm mark, this is then used to calibrate the image 
+/// setting the number of pixels = 10 mm
+
+// Gets size of image 
+width = getWidth();
+height = getHeight();
+
+// Fancy code that helps us guess where the second dash is
+// The function Analyize particles, looks for groups of connected pixels that are 
+// the same. However, it requires you to set how many pixels counts as a group. 
+// Since the image processing isnt perfect its important to exclude out low # groups
+// But as well as high number groups as this can mess up the particle # that gives 
+// us the correct calibration (currently particle #2). To add to this fun. Our current images
+// don't come in consistent sizes so one image could be massive 10000 pixels and 
+// another samll 1000 pixels. This code aims to guess on the correct pixel size for a
+// given image size. 
+low = 8;
+high = 28;
+xnormal = 532;
+ynormal = 434;
+
+scaleFactor = (xnormal * ynormal) / (width * height);
+
+rangelow = (low / scaleFactor) + (low / scaleFactor) * 0.1;
+rangehigh = (high / scaleFactor) - (high / scaleFactor) * 0.25;
+
+// Make sure image is binary
+run("Make Binary");
+
+// Set the binary background mode to "black background"
+run("Options...", "black");
+
+// Used to find the particle in position 2 for the calibration measurement
+// Uses rangelow and rangehigh to find it 
+run("Set Measurements...", "centroid");
+run("Analyze Particles...", "size=rangelow-rangehigh show=Outlines display clear include");
+
+// Get the number of results (rows in the table)
+n = nResults;
+
+y = getResult("Y", 1); // Y distance for the 10 mm line
+
+// This will print the pixel # that code thinks the 10 mm on the ultrasound image is at
+// you can use this as a check if your measurments appear off
+// Additionally, it will give you the middle where the probe triangle is at. This can be used
+// for the X off set in the excel template documnet. 
+print("Y =" + y);
+print("Middle =" + (width/2) * (10/y));
+
+run("Clear Results");
+
+
+
+/////////////////////////////////////////////// Loop to measure area, x, y, etc 
+
+// Closes current image and opens the 1st image back up
+close();
+open(path);
+
+waitForUser("click cancel when done collecting data");
+
+i = 1
+
+// loop to go through all images, the ultrasound appears to limit to 181 frames
+// but adjust if needed
+while(i < 182){
+
+run("Set Scale...", "distance=y known=10 unit=mm");
+
+run("Select All");
+
+// Prompt user to draw a shape
+waitForUser("Draw a shape (e.g., oval, rectangle, or polygon), then click OK");
+
+// Ensure centroid and area are measured
+run("Set Measurements...", "area centroid perimeter fit decimal=3");
+
+run("Measure");
+run("Select All");
+
+ii = i + 1;
+
+// Closes the current image
+close();
+
+// gets new path and opens next image
+// this is where you can change the file name to get images
+// the i is used to iterate through numbers and ".png" the file type / rest of the name
+newPath = replace(path, i + ".png", ii + ".png");
+open(newPath);
+
+path = newPath;
+i = i+1;
+
+}
